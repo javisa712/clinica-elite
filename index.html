@@ -3,7 +3,7 @@
 <head>
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Clínica Élite Madrid — Medicina estética de lujo en Madrid (demostración)</title>
 <meta name="description" content="Clínica de medicina estética en Madrid: rejuvenecimiento facial, ácido hialurónico, láser facial y tratamientos corporales. Web de demostración comercial.">
 <meta name="keywords" content="clínica de medicina estética en Madrid, medicina estética Madrid, rejuvenecimiento facial Madrid, tratamientos faciales Madrid, clínica estética de lujo Madrid">
@@ -400,6 +400,40 @@ footer.pie{background:var(--negro);color:#b7b2aa;padding:70px 0 40px}
 .campo input,.campo select,.campo textarea{width:100%;min-width:0;max-width:100%}
 /* Pantallas estrechas: los botones largos se ajustan al ancho en lugar de desbordar la página */
 @media (max-width:420px){.btn{white-space:normal;text-align:center;padding:16px 18px;letter-spacing:.1em}}
+
+/* ================= AJUSTES PARA MÓVIL ================= */
+/* Los dos botones flotantes a la misma altura. No se usa el margen «seguro» del sistema porque en algunos
+   navegadores móviles cambia al mostrarse u ocultarse la barra de direcciones y el botón daba saltos. */
+.chat-boton{bottom:24px}
+.chat-caja{bottom:92px}
+.tag-demo{bottom:18px}
+@media (max-width:640px){
+  .chat-boton{left:16px;bottom:24px;height:52px;padding:0 18px 0 14px;font-size:.84rem;gap:8px}
+  .tag-demo{display:none}
+  body{padding-bottom:88px} /* el final de la página no queda tapado por los botones flotantes */
+
+  /* Menú desplegable: el botón verde con su tamaño normal y en una sola línea */
+  .menu-movil{padding:28px 24px 40px;overflow-y:auto}
+  .menu-movil .btn{font-family:var(--sans);font-size:.8rem;letter-spacing:.16em;padding:18px 16px;border-bottom:0;white-space:nowrap;margin-top:28px}
+  /* Con el menú o el chat abiertos, los botones flotantes se ocultan para no tapar nada */
+  body.menu-abierto .chat-boton, body.menu-abierto vapi-widget,
+  body.chat-abierto .chat-boton, body.chat-abierto vapi-widget{display:none !important}
+  body.chat-abierto{overflow:hidden}
+
+  /* Chat a pantalla completa: más sitio para la conversación */
+  .chat-caja{left:0;right:0;top:0;bottom:auto;width:100%;height:100vh;height:100dvh;max-height:none;border:0;box-shadow:none}
+  .chat-caja.abierto{animation:none}
+  .chat-cab{padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+  .chat-cuerpo{padding:18px 14px;gap:14px}
+  .chat-msg{max-width:90%;font-size:1rem;line-height:1.6;padding:13px 15px}
+  /* Preguntas sugeridas: una sola fila que se desliza con el dedo, más pequeñas */
+  .chat-rapidas{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:8px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .chat-rapidas::-webkit-scrollbar{display:none}
+  .chat-rapidas .rapida{flex:none;white-space:nowrap;font-size:.74rem;padding:6px 12px}
+  .chat-pie{padding:10px 12px}
+  .chat-pie input{font-size:16px} /* evita que el móvil amplíe la pantalla al escribir */
+  .chat-aviso{font-size:.66rem;padding:0 12px 10px}
+}
 </style>
 </head>
 <body>
@@ -970,7 +1004,14 @@ document.addEventListener("click", e => {
   if (!enlace) return;
   const ruta = enlace.getAttribute("href").slice(1);
   if (!RUTAS.includes(ruta)) return;
-  if (window.self === window.top) return; /* web independiente: navegación normal, con historial */
+  if (window.self === window.top) {
+    /* Web independiente: navegación normal, con historial. El menú móvil se cierra siempre; si el enlace
+       lleva a la sección en la que ya se está, se muestra de nuevo desde arriba (antes no hacía nada). */
+    document.body.classList.remove("menu-abierto");
+    const bm0 = document.getElementById("btnMenu"); if (bm0) bm0.setAttribute("aria-expanded", "false");
+    if (rutaActual() === ruta) { e.preventDefault(); mostrarVista(ruta); window.scrollTo({ top: 0, behavior: "auto" }); }
+    return;
+  }
   e.preventDefault();
   mostrarVista(ruta);
   document.body.classList.remove("menu-abierto");
@@ -1345,6 +1386,12 @@ mostrarVista(rutaActual());
   </div>
 </div>
 <script>
+/* ---------- El chat avisa a la página de que está abierto ---------- */
+(function () {
+  const caja = document.getElementById("chatCaja"); if (!caja) return;
+  const marcar = () => document.body.classList.toggle("chat-abierto", caja.classList.contains("abierto"));
+  new MutationObserver(marcar).observe(caja, { attributes: true, attributeFilter: ["class"] }); marcar();
+})();
 /* ---------- Selector «por escrito / por voz» ---------- */
 (function () {
   const modalCanal = document.getElementById("modalCanal");
