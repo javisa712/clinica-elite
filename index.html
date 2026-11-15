@@ -401,6 +401,12 @@ footer.pie{background:var(--negro);color:#b7b2aa;padding:70px 0 40px}
 /* Pantallas estrechas: los botones largos se ajustan al ancho en lugar de desbordar la página */
 @media (max-width:420px){.btn{white-space:normal;text-align:center;padding:16px 18px;letter-spacing:.1em}}
 
+/* Panel de voz en móvil: centrado y dentro de la pantalla (lo aplica el script «Panel de voz») */
+@media (max-width:640px){
+  .auria-voz-panel{left:12px !important;right:12px !important;width:auto !important;max-width:none !important;box-sizing:border-box !important}
+  .auria-voz-panel *{max-width:100% !important}
+  .auria-voz-ancho{width:100% !important;box-sizing:border-box !important}
+}
 /* ================= AJUSTES PARA MÓVIL ================= */
 /* Los dos botones flotantes a la misma altura. No se usa el margen «seguro» del sistema porque en algunos
    navegadores móviles cambia al mostrarse u ocultarse la barra de direcciones y el botón daba saltos. */
@@ -1455,6 +1461,71 @@ mostrarVista(rutaActual());
     if (el) { try { el.click(); } catch (err) {} }
     guiarHastaVoz(el ? "Tu asistente de voz está aquí" : "Pulsa aquí para hablar");
   });
+})();
+/* ---------- Panel de voz: centrado en el móvil y con los textos en español ----------
+   El componente de voz lo carga Vapi y no se puede editar. Este script lo ajusta desde fuera cada vez
+   que cambia: en pantallas estrechas centra el panel desplegado (salía cortado por la izquierda) y
+   traduce los textos que el componente trae en inglés. */
+(function () {
+  const TEXTOS = {
+    "Click the microphone to start": "Pulsa «Empezar» para hablar",
+    "Click the start button to begin a conversation": "Pulsa «Empezar» para iniciar la conversación",
+    "Start": "Empezar", "Start Call": "Empezar", "End": "Terminar", "End Call": "Terminar", "Stop": "Terminar",
+    "Connecting...": "Conectando…", "Connecting…": "Conectando…", "Connecting": "Conectando",
+    "Listening...": "Te escucho…", "Listening…": "Te escucho…", "Listening": "Te escucho",
+    "Speaking...": "Hablando…", "Speaking…": "Hablando…", "Speaking": "Hablando",
+    "Thinking...": "Un momento…", "Thinking…": "Un momento…",
+    "Call ended": "Conversación terminada", "Reset": "Reiniciar", "Close": "Cerrar", "Mute": "Silenciar", "Unmute": "Activar micrófono"
+  };
+  const ESTILO = `@media (max-width:640px){
+  .auria-voz-panel{left:12px !important;right:12px !important;width:auto !important;max-width:none !important;box-sizing:border-box !important}
+  .auria-voz-panel *{max-width:100% !important}
+  .auria-voz-ancho{width:100% !important;box-sizing:border-box !important}
+}`;
+  let pendiente = false;
+  function ajustar() {
+    pendiente = false;
+    const w = document.querySelector("vapi-widget"); if (!w) return;
+    const estrecha = window.innerWidth <= 640;
+    for (const raiz of [w.shadowRoot, w]) {
+      if (!raiz) continue;
+      if (raiz === w.shadowRoot && !raiz.querySelector("style[data-auria]")) { const st = document.createElement("style"); st.setAttribute("data-auria", ""); st.textContent = ESTILO; raiz.appendChild(st); }
+      const nodos = [...raiz.querySelectorAll("*")];
+      /* 1. Textos en español */
+      for (const el of nodos) for (const n of el.childNodes) {
+        if (n.nodeType !== 3) continue; const t = n.nodeValue.trim();
+        if (TEXTOS[t]) n.nodeValue = n.nodeValue.replace(t, TEXTOS[t]);
+      }
+      for (const el of nodos) for (const at of ["aria-label", "title", "placeholder"]) { const v = el.getAttribute && el.getAttribute(at); if (v && TEXTOS[v.trim()]) el.setAttribute(at, TEXTOS[v.trim()]); }
+      /* 2. Panel desplegado centrado en pantallas estrechas */
+      for (const el of nodos) {
+        const fijo = getComputedStyle(el).position === "fixed";
+        const grande = fijo && el.getBoundingClientRect().height > 220; /* el panel abierto; el botón plegado es bajo */
+        if (grande && estrecha) { if (!el.classList.contains("auria-voz-panel")) el.classList.add("auria-voz-panel"); }
+        else if (el.classList.contains("auria-voz-panel")) el.classList.remove("auria-voz-panel");
+      }
+      for (const panel of raiz.querySelectorAll(".auria-voz-panel")) {
+        const ancho = panel.getBoundingClientRect().width;
+        for (const el of panel.querySelectorAll("*")) {
+          const r = el.getBoundingClientRect();
+          if ((r.width > ancho + 1 || r.left < 0 || r.right > window.innerWidth) && !el.classList.contains("auria-voz-ancho")) el.classList.add("auria-voz-ancho");
+        }
+      }
+      if (!estrecha) raiz.querySelectorAll(".auria-voz-ancho").forEach(el => el.classList.remove("auria-voz-ancho"));
+    }
+  }
+  const programar = () => { if (!pendiente) { pendiente = true; requestAnimationFrame(ajustar); } };
+  function vigilar() {
+    const w = document.querySelector("vapi-widget"); if (!w) return;
+    const obs = new MutationObserver(programar);
+    obs.observe(w, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "style"] });
+    if (w.shadowRoot) obs.observe(w.shadowRoot, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "style"] });
+    programar();
+  }
+  vigilar();
+  /* El componente se carga después que la página: se vuelve a enganchar cuando esté listo */
+  if (window.customElements && customElements.whenDefined) customElements.whenDefined("vapi-widget").then(() => setTimeout(vigilar, 300));
+  window.addEventListener("resize", programar);
 })();
 </script>
 </body>
